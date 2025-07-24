@@ -56,7 +56,7 @@
     let viewer = OpenSeadragon({
       id: "openseadragon",
       prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",
-      tileSources: "https://openseadragon.github.io/example-images/duomo/duomo.dzi"
+      tileSources: "https://openseadragon.github.io/example-images/duomo/duomo.dzi" // ← Замени на свой DZI
     });
 
     let rulerMode = false;
@@ -94,25 +94,18 @@
     }
 
     function drawRuler(p1, p2) {
-      // Удалить старую линейку и метку
+      // Удалить старые элементы
       clearRuler();
 
-      // Преобразование в пиксели
-      const px1 = viewer.viewport.pixelFromPoint(viewer.viewport.imageToViewportCoordinates(p1), true);
-      const px2 = viewer.viewport.pixelFromPoint(viewer.viewport.imageToViewportCoordinates(p2), true);
+      // Переводим координаты изображения в координаты контейнера
+      const container = viewer.container;
+      const px1 = viewer.viewport.pixelFromPoint(viewer.viewport.imageToViewportCoordinates(p1));
+      const px2 = viewer.viewport.pixelFromPoint(viewer.viewport.imageToViewportCoordinates(p2));
 
       const dx = px2.x - px1.x;
       const dy = px2.y - px1.y;
-
       const angle = Math.atan2(dy, dx) * 180 / Math.PI;
       const length = Math.sqrt(dx * dx + dy * dy);
-
-      // Масштаб: 0.25 микрон на пиксель (замени на свой при необходимости)
-      const scalePerPixel = 0.25;
-      const imageDistance = Math.sqrt(
-        Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2)
-      );
-      const realDistance = imageDistance * scalePerPixel;
 
       const line = document.createElement('div');
       line.className = 'ruler-line';
@@ -120,30 +113,36 @@
       line.style.top = px1.y + 'px';
       line.style.width = length + 'px';
       line.style.transform = `rotate(${angle}deg)`;
-      viewer.container.appendChild(line);
+      document.getElementById('openseadragon').appendChild(line);
 
-      const text = document.createElement('div');
-      text.id = 'distance-label';
-      text.innerText = realDistance.toFixed(2) + ' µm';
-      text.style.left = (px1.x + dx / 2) + 'px';
-      text.style.top = (px1.y + dy / 2) + 'px';
-      viewer.container.appendChild(text);
+      // Расчет реального расстояния
+      const imageDistance = Math.sqrt(
+        Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2)
+      );
+      const scalePerPixel = 0.25; // микронов на пиксель (замени при необходимости)
+      const realDistance = imageDistance * scalePerPixel;
+
+      const label = document.createElement('div');
+      label.id = 'distance-label';
+      label.innerText = realDistance.toFixed(2) + ' µm';
+      label.style.left = (px1.x + dx / 2) + 'px';
+      label.style.top = (px1.y + dy / 2) + 'px';
+      document.getElementById('openseadragon').appendChild(label);
     }
 
-   viewer.addHandler('canvas-press', function(event) {
-  if (!rulerMode) return;
+    viewer.addHandler('canvas-press', function(event) {
+      if (!rulerMode) return;
 
-  const point = viewer.viewport.pointFromPixel(event.position);
-  const imagePoint = viewer.viewport.viewportToImageCoordinates(point);
-  points.push(imagePoint);
+      const point = viewer.viewport.pointFromPixel(event.position);
+      const imagePoint = viewer.viewport.viewportToImageCoordinates(point);
+      points.push(imagePoint);
 
-  if (points.length === 2) {
-    drawRuler(points[0], points[1]);
-    rulerMode = false;
-    viewer.setMouseNavEnabled(true);
-  }
-});
-
+      if (points.length === 2) {
+        drawRuler(points[0], points[1]);
+        rulerMode = false;
+        viewer.setMouseNavEnabled(true);
+      }
+    });
 
     viewer.addHandler('animation', () => {
       if (points.length === 2) {
